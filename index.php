@@ -4,65 +4,99 @@ require 'flight/Flight.php';
 
 Flight::register('db', 'PDO', array('mysql:host=localhost;dbname=api', 'root', ''));
 
-//GET ALL ALUMNOS
+
+// Filtro para configurar encabezados de seguridad
+Flight::before('start', function () { // estable un filtro antes de que la aplicacion se ejecute
+    header("Content-Type: application/json"); // Solo respuestas tipo JSON
+    header("Access-Control-Allow-Origin: *"); // Permitir solicitudes de cualquier origen
+    header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE"); // metodos permitidos
+    header("Access-Control-Allow-Headers: Content-Type"); //permitir solicitudes que incluyan datos en JSON
+});
+
+
+// Obtener todos los alumnos
 Flight::route('GET /alumnos', function () {
-    $sql = "SELECT * FROM `alumnos`";
-    $sentencia = Flight::db()->prepare($sql);
-    $sentencia->execute();
-    $datos = $sentencia->fetchAll();
-    Flight::json($datos);
+    try {
+        $sql = "SELECT * FROM alumnos";
+        $stmt = Flight::db()->query($sql); // ejecutar la consulta
+        $alumnos = $stmt->fetchAll(PDO::FETCH_ASSOC); // mostrar solo los datos sin indices de las columnas
+        Flight::json($alumnos);
+    } catch (PDOException $e) {
+        // consulta invalida
+        Flight::json(["error" => "Error al obtener los alumnos: " . $e->getMessage()], 500);
+    }
 });
-// GET ALUMNO BY ID
+
+// Obtener alumno por ID
 Flight::route('GET /alumnos/@id', function ($id) {
-
-    $sql = "SELECT * FROM `alumnos` WHERE id=?";
-    $sentencia = Flight::db()->prepare($sql);
-    $sentencia->bindParam(1, $id);
-    $sentencia->execute();
-    $datos = $sentencia->fetchAll();
-    Flight::json($datos);
+    try {
+        $sql = "SELECT * FROM alumnos WHERE id=?";
+        $stmt = Flight::db()->prepare($sql);
+        $stmt->execute([$id]);
+        $alumno = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($alumno) {
+            Flight::json($alumno);
+        } else {
+            Flight::json(["error" => "No se encontró ningún alumno con el ID especificado"], 404);
+        }
+    } catch (PDOException $e) {
+        Flight::json(["error" => "Error al obtener el alumno: " . $e->getMessage()], 500);
+    }
 });
-// INSERTAR ALUMNOS
+
+// Insertar alumno
 Flight::route('POST /alumnos', function () {
-    $nombre = (Flight::request()->data->nombre);
-    $apellidos = (Flight::request()->data->apellidos);
+    try {
+        $request = Flight::request();
+        $nombre = $request->data->nombre;
+        $apellidos = $request->data->apellidos;
 
-    $sql = "INSERT INTO alumnos (nombre,apellidos) VALUES (?,?)";
-    $sentencia = Flight::db()->prepare($sql);
-    $sentencia->bindParam(1, $nombre);
-    $sentencia->bindParam(2, $apellidos);
-    $sentencia->execute();
+        $sql = "INSERT INTO alumnos (nombre, apellidos) VALUES (?, ?)";
+        $stmt = Flight::db()->prepare($sql);
+        $stmt->execute([$nombre, $apellidos]);
 
-    Flight::jsonp(["Alumno agregado"]);
+        Flight::json(["message" => "Alumno agregado"]);
+    } catch (PDOException $e) {
+        Flight::json(["error" => "Error al insertar el alumno: " . $e->getMessage()], 500);
+    }
 });
 
-// BORRAR REGISTRO 
-Flight::route('DELETE /alumnos', function () {
-    $id = (Flight::request()->data->id);
+// Borrar alumno
+Flight::route('DELETE /alumnos/@id', function ($id) {
+    try {
+        $sql = "DELETE FROM alumnos WHERE id=?";
+        $stmt = Flight::db()->prepare($sql);
+        $stmt->execute([$id]);
 
-    $sql = "DELETE FROM alumnos WHERE id=?";
-    $sentencia = Flight::db()->prepare($sql);
-    $sentencia->bindParam(1, $id);
-    $sentencia->execute();
-
-    Flight::jsonp(["Alumno borrado"]);
+        if ($stmt->rowCount() > 0) {
+            Flight::json(["message" => "Alumno borrado"]);
+        } else {
+            Flight::json(["error" => "No se encontró ningún alumno con el ID especificado"], 404);
+        }
+    } catch (PDOException $e) {
+        Flight::json(["error" => "Error al borrar el alumno: " . $e->getMessage()], 500);
+    }
 });
 
-// ACTULIAZAR REGISTRO 
-Flight::route('PUT /alumnos', function () {
+// Actualizar alumno
+Flight::route('PUT /alumnos/@id', function ($id) {
+    try {
+        $request = Flight::request();
+        $nombre = $request->data->nombre;
+        $apellidos = $request->data->apellidos;
 
-    $id = (Flight::request()->data->id);
-    $nombre = (Flight::request()->data->nombre);
-    $apellidos = (Flight::request()->data->apellidos);
+        $sql = "UPDATE alumnos SET nombre=?, apellidos=? WHERE id=?";
+        $stmt = Flight::db()->prepare($sql);
+        $stmt->execute([$nombre, $apellidos, $id]);
 
-    $sql = "UPDATE alumnos SET nombre=?,apellidos=? WHERE id=?";
-    $sentencia = Flight::db()->prepare($sql);
-    $sentencia->bindParam(1, $nombre);
-    $sentencia->bindParam(2, $apellidos);
-    $sentencia->bindParam(3, $id);
-    $sentencia->execute();
-
-    Flight::jsonp(["Alumno actualizado"]);
+        if ($stmt->rowCount() > 0) {
+            Flight::json(["message" => "Alumno actualizado"]);
+        } else {
+            Flight::json(["error" => "No se encontró ningún alumno con el ID especificado"], 404);
+        }
+    } catch (PDOException $e) {
+        Flight::json(["error" => "Error al actualizar el alumno: " . $e->getMessage()], 500);
+    }
 });
 
 Flight::start();

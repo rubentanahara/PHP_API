@@ -1,106 +1,130 @@
 <?php
 
 require 'flight/Flight.php';
+require 'enumeradores.php';
 
+$app = Flight::app();
 
-Flight::register('db', 'PDO', array('mysql:host=localhost;dbname=api', 'root', ''));
-
+// Registrar la base de datos
+$app->register('db', 'PDO', ['mysql:host=localhost;dbname=api', 'root', '']);
 
 // Filtro para configurar encabezados de seguridad
-Flight::before('start', function () { // estable un filtro antes de que la aplicacion se ejecute
-    header("Content-Type: application/json"); // Solo respuestas tipo JSON
-    header("Access-Control-Allow-Origin: *"); // Permitir solicitudes de cualquier origen
-    header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE"); // metodos permitidos
-    header("Access-Control-Allow-Headers: Content-Type"); //permitir solicitudes que incluyan datos en JSON
+$app->before('start', function () {
+    header("Content-Type: application/json");
+    header("Access-Control-Allow-Origin: *");
+    header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE");
+    header("Access-Control-Allow-Headers: Content-Type");
 });
 
-
 // Obtener todos los alumnos
-Flight::route('GET /alumnos', function () {
+$app->route('GET /alumnos', function () use ($app) {
     try {
-        $sql = "SELECT * FROM alumnos";
-        $stmt = Flight::db()->query($sql); // ejecutar la consulta
-        $alumnos = $stmt->fetchAll(PDO::FETCH_ASSOC); // mostrar solo los datos sin indices de las columnas
-        Flight::json($alumnos);
+        $sql = "SELECT * FROM alumno";
+        $stmt = $app->db()->query($sql);
+        $alumnos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $app->json($alumnos,HttpStatusCodes::OK);
     } catch (PDOException $e) {
-        // consulta invalida
-        Flight::json(["error" => "Error al obtener los alumnos: " . $e->getTraceAsString()], 500);
+        $error = [
+            'error' => 'Error al obtener los alumnos',
+            'message' => $e->getMessage(),
+            'type' => get_class($e)
+        ];
+        $app->halt(HttpStatusCodes::INTERNAL_SERVER_ERROR, json_encode($error));
     }
 });
 
 // Obtener alumno por ID
-Flight::route('GET /alumnos/@id', function ($id) {
+$app->route('GET /alumnos/@id', function ($id) use ($app) {
     try {
         $sql = "SELECT * FROM alumnos WHERE id=?";
-        $stmt = Flight::db()->prepare($sql);
+        $stmt = $app->db()->prepare($sql);
         $stmt->execute([$id]);
         $alumno = $stmt->fetch(PDO::FETCH_ASSOC);
         if ($alumno) {
-            Flight::json($alumno);
+            $app->json($alumno,HttpStatusCodes::OK);
         } else {
-            Flight::json(["error" => "No se encontró ningún alumno con el ID especificado"], 404);
+            $app->json(["error" => "No se encontró ningún alumno con el ID especificado"], HttpStatusCodes::NOT_FOUND);
         }
     } catch (PDOException $e) {
-        Flight::json(["error" => "Error al obtener el alumno: " . $e->getMessage()], 500);
+        $error = [
+            'error' => 'Error al obtener el alumno',
+            'message' => $e->getMessage(),
+            'type' => get_class($e)
+        ];
+       $app->halt(HttpStatusCodes::INTERNAL_SERVER_ERROR, json_encode($error));
     }
 });
 
 // Insertar alumno
-Flight::route('POST /alumnos', function () {
+$app->route('POST /alumnos', function () use ($app) {
     try {
-        $request = Flight::request();
-        $nombre = $request->data->nombre;
-        $apellidos = $request->data->apellidos;
+        $nombre = $app->request()->data->nombre;
+        $apellidos = $app->request()->data->apellidos;
 
         $sql = "INSERT INTO alumnos (nombre, apellidos) VALUES (?, ?)";
-        $stmt = Flight::db()->prepare($sql);
+        $stmt = $app->db()->prepare($sql);
         $stmt->execute([$nombre, $apellidos]);
 
-        Flight::json(["message" => "Alumno agregado"]);
+        $app->json(["message" => "Alumno agregado"],HttpStatusCodes::OK);
     } catch (PDOException $e) {
-        Flight::json(["error" => "Error al insertar el alumno: " . $e->getMessage()], 500);
+        $error = [
+            'error' => 'Error al insertar el alumno',
+            'message' => $e->getMessage(),
+            'type' => get_class($e)
+        ];
+        $app->halt(HttpStatusCodes::INTERNAL_SERVER_ERROR, json_encode($error));
     }
 });
 
 // Borrar alumno
-Flight::route('DELETE /alumnos/@id', function ($id) {
+$app->route('DELETE /alumnos/@id', function ($id) use ($app) {
     try {
         $sql = "DELETE FROM alumnos WHERE id=?";
-        $stmt = Flight::db()->prepare($sql);
+        $stmt = $app->db()->prepare($sql);
         $stmt->execute([$id]);
 
         if ($stmt->rowCount() > 0) {
-            Flight::json(["message" => "Alumno borrado"]);
+            $app->json(["message" => "Alumno borrado"],HttpStatusCodes::OK);
         } else {
-            Flight::json(["error" => "No se encontró ningún alumno con el ID especificado"], 404);
+            $app->json(["error" => "No se encontró ningún alumno con el ID especificado"], HttpStatusCodes::NOT_FOUND);
         }
     } catch (PDOException $e) {
-        Flight::json(["error" => "Error al borrar el alumno: " . $e->getMessage()], 500);
+        $error = [
+            'error' => 'Error al borrar el alumno',
+            'message' => $e->getMessage(),
+            'type' => get_class($e)
+        ];
+         $app->halt(HttpStatusCodes::INTERNAL_SERVER_ERROR, json_encode($error));
     }
 });
 
 // Actualizar alumno
-Flight::route('PUT /alumnos/@id', function ($id) {
+$app->route('PUT /alumnos/@id', function ($id) use ($app) {
     try {
-        $request = Flight::request();
-        $nombre = $request->data->nombre;
-        $apellidos = $request->data->apellidos;
+        $nombre = $app->request()->data->nombre;
+        $apellidos = $app->request()->data->apellidos;
 
         $sql = "UPDATE alumnos SET nombre=?, apellidos=? WHERE id=?";
-        $stmt = Flight::db()->prepare($sql);
+        $stmt = $app->db()->prepare($sql);
         $stmt->execute([$nombre, $apellidos, $id]);
 
         if ($stmt->rowCount() > 0) {
-            Flight::json(["message" => "Alumno actualizado"]);
+            $app->json(["message" => "Alumno actualizado"],HttpStatusCodes::OK);
         } else {
-            Flight::json(["error" => "No se encontró ningún alumno con el ID especificado"], 404);
+            $app->json(["error" => "No se encontró ningún alumno con el ID especificado"], HttpStatusCodes::NOT_FOUND);
         }
     } catch (PDOException $e) {
-        Flight::json(["error" => "Error al actualizar el alumno: " . $e->getMessage()], 500);
+        $error = [
+            'error' => 'Error al actualizar el alumno',
+            'message' => $e->getMessage(),
+            'type' => get_class($e)
+        ];
+        $app->halt(HttpStatusCodes::INTERNAL_SERVER_ERROR, json_encode($error));
     }
 });
 
-Flight::start();
+$app->start();
+
 
 /**
     INFO
@@ -156,6 +180,21 @@ $row = $stmt->fetch(PDO::FETCH_ASSOC);
 //     "apellidos" => "Doe"
 // ]
 
+halt()
 
+La función halt() en el contexto del framework Flight de PHP se utiliza para detener la ejecución de la aplicación 
+y enviar una respuesta HTTP con un código de estado y un cuerpo de respuesta personalizados.
+
+La función halt() tiene la siguiente sintaxis:
+
+Flight::halt($statusCode, $body);
+
+$statusCode es el código de estado HTTP que se enviará en la respuesta.
+$body es el cuerpo de la respuesta, que puede ser una cadena de texto 
+o un arreglo asociativo que se convierte automáticamente a JSON.
+Cuando se llama a halt(), la ejecución del código se interrumpe 
+y se envía una respuesta HTTP con el código de estado y el cuerpo especificados. 
+Esto puede ser útil para manejar errores y enviar mensajes de error personalizados
+en lugar de mostrar una página en blanco o una respuesta genérica.
 
  */

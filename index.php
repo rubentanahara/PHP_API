@@ -1,7 +1,7 @@
 <?php
 
 require 'flight/Flight.php';
-require 'enumeradores.php';
+require 'EnumHTTP.php';
 
 $app = Flight::app();
 

@@ -2,6 +2,7 @@
 
 require 'flight/Flight.php';
 
+
 Flight::register('db', 'PDO', array('mysql:host=localhost;dbname=api', 'root', ''));
 
 
@@ -23,7 +24,7 @@ Flight::route('GET /alumnos', function () {
         Flight::json($alumnos);
     } catch (PDOException $e) {
         // consulta invalida
-        Flight::json(["error" => "Error al obtener los alumnos: " . $e->getMessage()], 500);
+        Flight::json(["error" => "Error al obtener los alumnos: " . $e->getTraceAsString()], 500);
     }
 });
 
@@ -100,3 +101,61 @@ Flight::route('PUT /alumnos/@id', function ($id) {
 });
 
 Flight::start();
+
+/**
+    INFO
+
+// Diferencias entre prepare() y query():
+
+// prepare():
+// - Se utiliza para preparar una consulta SQL con parámetros variables.
+// - Permite reutilizar la consulta preparada con diferentes valores de parámetros.
+// - Proporciona una capa adicional de seguridad al evitar ataques de inyección de SQL.
+// - Se recomienda su uso cuando se espera ejecutar la misma consulta varias veces con diferentes valores de parámetros.
+// - Requiere asociar los valores de los parámetros utilizando bindParam() o bindValue() antes de ejecutar la consulta con execute().
+
+// query():
+// - Se utiliza para ejecutar una consulta SQL directamente sin prepararla previamente.
+// - Es útil cuando la consulta no requiere parámetros variables y puede ejecutarse de forma inmediata.
+// - No proporciona la misma capa de seguridad que prepare() y puede ser vulnerable a ataques de inyección de SQL si se incluyen datos no confiables directamente en la consulta.
+// - Es más simple de usar y puede ser adecuado para consultas rápidas y sencillas sin complicaciones adicionales.
+
+
+Es importante tener en cuenta que el uso de :: y -> depende de cómo se hayan definido los métodos y propiedades en la clase. 
+Si un método o propiedad es estático, se debe usar :: para acceder a él. 
+Si un método o propiedad es de instancia, se debe usar -> para acceder a él en el contexto de un objeto específico.
+
+
+   (Operador de resolución de ámbito estático):
+
+   Se utiliza para acceder a métodos y propiedades estáticas de una clase sin necesidad de crear una instancia de la clase.
+   Permite acceder a elementos que son compartidos por todas las instancias de la clase.
+   Se utiliza cuando los métodos o propiedades son declarados como estáticos en la clase.
+   Ejemplo: MiClase::metodoEstatico();
+
+   -> (Operador de acceso a miembros de objeto):
+
+   Se utiliza para acceder a métodos y propiedades de una instancia específica de una clase.
+   Requiere crear una instancia (objeto) de la clase antes de poder acceder a sus métodos y propiedades.
+   Se utiliza cuando los métodos o propiedades son de instancia, es decir, específicos de cada objeto.
+   Ejemplo: $objeto->metodoDeInstancia();
+
+PDO::FETCH_ASSOC
+
+// Supongamos que tenemos una fila de una consulta con las siguientes columnas:
+// id: 1
+// nombre: John
+// apellidos: Doe
+
+$row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// $row contendrá el siguiente arreglo asociativo:
+// [
+//     "id" => 1,
+//     "nombre" => "John",
+//     "apellidos" => "Doe"
+// ]
+
+
+
+ */
